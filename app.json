@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "willofGod",
+    "slug": "willofgod",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#b8a493"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lazanebuka.willofGod"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#b8a493"
+      },
+      "package": "com.lazanebuka.willofGod"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9f17f78b-ea28-4e5b-a2b1-d1766796039a"
+      }
+    },
+    "owner": "lazanebuka",
+    "plugins": [
+      "react-native-compressor"
+    ]
+  }
+}
