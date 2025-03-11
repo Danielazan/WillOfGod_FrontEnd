@@ -60,9 +60,11 @@ const Index = ({ navigation }) => {
 
   const [editId, setEditId] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(0);
+
   const [inputValues, setInputValues] = useState("");
 
-  const { DATA, setData, refreash, setRefreash, EditQty, setEditQty } =
+  const { DATA, setData, refreash, setRefreash, EditQty, setEditQty,cusDATA, setCusData } =
     useContext(GlobalContext);
 
   const [ProductImg, setProductImg] = useState("");
@@ -70,6 +72,8 @@ const Index = ({ navigation }) => {
   const [fullDate, setFullDate] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const [ItemsBought, setItemsBought] = useState(false);
 
   const [editImage, setEditImage] = useState(null);
 
@@ -125,25 +129,43 @@ const Index = ({ navigation }) => {
       }
     };
 
-    return `${weekday} ${day}${suffix(day)} ${year}`;
+    return `${weekday} ${day}${suffix(day)} ${month} ${year}`;
   };
 
-  const fetchCustomers = async () => {
-    setIsLoading(true);
+  const fetchCustomers = async (Page) => {
     try {
-      const response = await axios.get(`${URL}/api/customer`);
+      const response = await axios.get(`${URL}/api/customerbypage?page=${Page}&size=200`);
       // Reverse the products array
-      const reversedProducts = response.data.reverse();
+      const reversedProducts = response.data;
+      return reversedProducts
+      
 
-      setProducts(reversedProducts);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
-      setFullDate(reversedProducts);
+  const initalLoad = async ()=>{
+    try {
+      setIsLoading(true);
+
+      let  users= await fetchCustomers(currentPage)
+
+      setProducts(users);
+
+      setCusData(users);
+
+      setData(users);
+
+      setFullDate(users);
+
+      console.log("Products:", users);
 
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching products:", error);
     }
-  };
+  }
 
   const deleteProduct = (productId, productName) => {
     new Promise((resolve, reject) => {
@@ -173,53 +195,21 @@ const Index = ({ navigation }) => {
     // console.log('Product deleted successfully:', response);
   };
 
+  let tems = false;
+
   useEffect(() => {
-    fetchCustomers();
-  }, [refreash]);
+    initalLoad();
+  }, []);
 
-  const ActiveItem = (item, index, type, act) => {
+  const ActiveItem = (item, index) => {
     try {
-      const NewData = DATA.map((e, idx) => {
-        if (item.id === e.id && type == "action" && act == "open") {
-          return {
-            ...e,
-            selected: true,
-          };
-        }
+      const NewData = products
+        .filter((e) => item.id === e.id)
+        .map((e) => e.Items);
+      setItemsBought(JSON.parse(NewData));
 
-        if (item.id === e.id && type == "All" && act == "close") {
-          return {
-            ...e,
-            selected: false,
-            QuantityO: false,
-            ImageChange: false,
-          };
-        }
-
-        if (item.id === e.id && type == "addQ" && act == "open") {
-          return {
-            ...e,
-            selected: false,
-            QuantityO: true,
-          };
-        }
-
-        if (item.id === e.id && type == "Edit Image" && act == "open") {
-          return {
-            ...e,
-            selected: false,
-            ImageChange: true,
-          };
-        }
-
-        return {
-          ...e,
-          selected: false,
-        };
-      });
-
-      setData(NewData);
-      console.log(item.id);
+      tems = JSON.parse(NewData);
+      console.log(JSON.parse(NewData));
     } catch (error) {
       console.error(
         "An error occurred while updating the active item:",
@@ -231,6 +221,10 @@ const Index = ({ navigation }) => {
       };
     }
   };
+
+  // useEffect(() => {
+  //   console.log(">>>>>", ItemsBought);
+  // }, [ItemsBought]);
 
   const openCameraLib = async (item, index) => {
     console.log("PRESSS =====>>>");
@@ -270,8 +264,6 @@ const Index = ({ navigation }) => {
     console.log("RESULT===>>", result);
   };
 
-
-
   const handleSearch = (query) => {
     setSearchQuery(query);
     const formattedQuery = query.toLowerCase();
@@ -294,236 +286,375 @@ const Index = ({ navigation }) => {
     console.log(Name);
   };
 
-  const renderItemsTable = (items) => {
-    const parsedItems = JSON.parse(items);
+  const handleLoadMore = async () => {
+    console.log("is lOadinng...",isLoading);
+    if (isLoading) return; // Prevent multiple calls
+  
+    setIsLoading(true);
+    
+    const NextPage =currentPage + 1
+  
+     let prodata = await fetchCustomers(NextPage)
+  
+    //  setProducts((prevProducts) => [...prevProducts, ...prodata]) // Append new data
+
+    setProducts([...products, ...prodata])
+
+    setCusData([...products, ...prodata])
+  
+    setCurrentPage(NextPage)
+
+    
+    setIsLoading(false);
+    console.log("Attempting to load more items...",NextPage);
+    console.log("is lOadinng...",isLoading);
+    
+  };
+
+  const FillItemsBought = (items) => {
+    items.map((item) => console.log(items));
+    // setModel(items)
+  };
+
+  const RenderItemsTable = ({ item }) => {
     return (
-      <TouchableOpacity style={{ height:"55%",width: "100%", alignItems:"center"}}>
-        <View style={{ width: "80%", height:vs(160),borderColor:"white", borderWidth:3, alignItems:"center", justifyContent:"center"}}>
-          {parsedItems.map((item, index) => (
-            <View key={index} style={{flexDirection:"column",alignItems:"center",justifyContent:"space-evenly", height:vs(84)}}>
-              <View
-                style={{
-                  width: "60%",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text style={{fontSize:s(16),fontWeight:800,color:"#ffd953"}}>Product Name</Text>
+      <ScrollView
+        style={{
+          flex: 1,
+          width: "100%",
+          height: "60%",
+        }}
+      >
+        <Pressable
+          style={{
+            backgroundColor: "#3c3f3d",
+            padding: 0,
+            flex: 1,
+            alignItems: "center",
+            borderRadius: 15,
+            width: "100%",
+            marginBottom: hp(2),
+            height: "100%",
+            justifyContent: "space-evenly",
+            flexDirection: "column",
+            gap: vs(12),
+            position: "relative",
+            paddingVertical: 5,
+            borderWidth: 2,
+            borderColor: "#ffd953",
+            paddingVertical: vs(25),
+          }}
+        >
+          <TouchableOpacity
+            style={{
+              position: "absolute",
+              top: 10,
+              left:1,
+              // backgroundColor: "red",
+              width: "30%",
+              height: "20%",
+              flexDirection:"row",
+              alignItems:"center",
+              justifyContent:"space-evenly"
+            }}
 
-                <Text style={{fontSize:s(14),fontWeight:600,color:"#ffd953"}}>{item.product_name}</Text>
-              </View>
-
-              <View
-                style={{
-                  width: "60%",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
+            onPress={()=>setItemsBought(false)}
+          >
+            <MaterialIcons name="cancel" size={24} color="white" />
+            <Text style={{color:"white", fontSize:18, fontWeight:400}}>Go Back</Text>
+          </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "space-evenly",
+              height: vs(84),
+              width: "100%",
+            }}
+          >
+            <View
+              style={{
+                width: "70%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{ fontSize: s(16), fontWeight: 800, color: "#ffd953" }}
               >
-                <Text style={{fontSize:s(16),fontWeight:800,color:"#ffd953"}}>Quantity</Text>
-                <Text style={{fontSize:s(14),fontWeight:600,color:"#ffd953"}}>{item.quantity}</Text>
-              </View>
+                Product Name
+              </Text>
 
-
-              <View
-                style={{
-                  width: "60%",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
+              <Text
+                style={{ fontSize: s(14), fontWeight: 600, color: "white" }}
               >
-                <Text style={{fontSize:s(16),fontWeight:800,color:"#ffd953"}}>Price Sold</Text>
-                <Text style={{fontSize:s(14),fontWeight:600,color:"#ffd953"}}>{item.price}</Text>
-              </View>
-              
-              <View
-                style={{
-                  width: "60%",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text style={{fontSize:s(16),fontWeight:800,color:"#ffd953"}}>Total</Text>
-                <Text style={{fontSize:s(14),fontWeight:600,color:"#ffd953"}}>{item.amount}</Text>
-              </View>
+                {item.product_name}
+              </Text>
             </View>
-          ))}
-        </View>
-      </TouchableOpacity>
+
+            <View
+              style={{
+                width: "60%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{ fontSize: s(16), fontWeight: 800, color: "#ffd953" }}
+              >
+                Quantity
+              </Text>
+              <Text
+                style={{ fontSize: s(14), fontWeight: 600, color: "#ffd953" }}
+              >
+                {item.quantity}
+              </Text>
+            </View>
+
+            <View
+              style={{
+                width: "60%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{ fontSize: s(16), fontWeight: 800, color: "#ffd953" }}
+              >
+                Price Sold
+              </Text>
+              <Text
+                style={{ fontSize: s(14), fontWeight: 600, color: "#ffd953" }}
+              >
+                {item.price}
+              </Text>
+            </View>
+
+            <View
+              style={{
+                width: "60%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{ fontSize: s(16), fontWeight: 800, color: "#ffd953" }}
+              >
+                Total
+              </Text>
+              <Text
+                style={{ fontSize: s(14), fontWeight: 600, color: "#ffd953" }}
+              >
+                {item.amount}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      </ScrollView>
     );
   };
 
   const renderItem = ({ item, index }) => {
     return (
-     <ScrollView style={{flex:1, width:"100%", height:"100%"}}>
-         <Pressable
-        style={{
-          backgroundColor: "#3c3f3d",
-          padding: 0,
-          flex: 1,
-          alignItems: "center",
-          borderRadius: 15,
-          width: "100%",
-          marginBottom: hp(2),
-          height: "100%",
-          justifyContent: "space-evenly",
-          flexDirection: "column",
-          gap:vs(112),
-          position: "relative",
-          paddingVertical: 5,
-          borderWidth: 2,
-          borderColor: "#ffd953",
-          paddingVertical:vs(25)
-        }}
-      >
-       
-
-        <View
+      <ScrollView style={{ flex: 1, width: "100%", height: "100%" }}>
+        <Pressable
           style={{
+            backgroundColor: "#3c3f3d",
+            padding: 0,
             flex: 1,
-            width: "100%",
-            flexDirection: "column",
             alignItems: "center",
-            marginTop: vs(5),
+            borderRadius: 15,
+            width: "100%",
+            marginBottom: hp(2),
+            height: "100%",
             justifyContent: "space-evenly",
-            gap:vs(10),
-            height: "60%",
-            paddingLeft: 9,
+            flexDirection: "column",
+            gap: vs(112),
             position: "relative",
-            display: !item.QuantityO ? "flex" : "none",
+            paddingVertical: 5,
+            borderWidth: 2,
+            borderColor: "#ffd953",
+            paddingVertical: vs(25),
           }}
         >
           <View
             style={{
-              color: "white",
-              flexDirection: "row",
+              flex: 1,
+              width: "100%",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
+              marginTop: vs(5),
+              justifyContent: "space-evenly",
+              gap: vs(10),
+              height: "60%",
+              paddingLeft: 9,
+              position: "relative",
+              display: !item.QuantityO ? "flex" : "none",
             }}
           >
-            <Text
-              style={{ fontWeight: 800, fontSize: ms(18, 0.6), color: "white" }}
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
             >
-              Name:
-            </Text>
-            <Text
-              style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
-            >
-              {item.Name}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              color: "white",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
-            }}
-          >
-            <Text style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}>
-              Contact:
-            </Text>
-            <Text
-              style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
-            >
-              {item.Contact}
-            </Text>
-          </View>
-
-            <View style={{width:"100%", alignItems:"center", justifyContent:"center", flexDirection:"colum"}}>
-
-                <Text style={{fontSize:s(20), fontWeight:800, color:"white"}}>Items Bought</Text>
-
-                {renderItemsTable(item.Items)}
+              <Text
+                style={{
+                  fontWeight: 800,
+                  fontSize: ms(18, 0.6),
+                  color: "white",
+                }}
+              >
+                Name:
+              </Text>
+              <Text
+                style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              >
+                {item.Name}
+              </Text>
             </View>
-          
-          
 
-          <View
-            style={{
-              color: "white",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
-            }}
-          >
-            <Text style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}>
-            Total Amount:
-            </Text>
-            <Text
-              style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
             >
-              {item.TotalAmount}
-            </Text>
-          </View>
+              <Text
+                style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}
+              >
+                Contact:
+              </Text>
+              <Text
+                style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              >
+                {item.Contact}
+              </Text>
+            </View>
 
-          <View
-            style={{
-              color: "white",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
-            }}
-          >
-            <Text style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}>
-            SoldBy:
-            </Text>
-            <Text
-              style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+            <View
+              style={{
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "colum",
+              }}
             >
-              {item.SoldBy}
-            </Text>
-          </View>
+              <TouchableOpacity
+                style={{
+                  borderColor: "red",
+                  borderWidth: 2,
+                  borderRadius: 10,
+                  padding: 10,
+                  width: "50%",
+                }}
+                onPress={() => {
+                  ActiveItem(item, index);
+                }}
+              >
+                <Text
+                  style={{ fontSize: s(20), fontWeight: 800, color: "white" }}
+                >
+                  Items Bought
+                </Text>
+              </TouchableOpacity>
 
-          <View
-            style={{
-              color: "white",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
-            }}
-          >
-            <Text style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}>
-              Branch:
-            </Text>
-            <Text
-              style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              {/* {RenderItemsTable(item.Items)} */}
+            </View>
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
             >
-              {item.BranchName}
-            </Text>
-          </View>
+              <Text
+                style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}
+              >
+                Total Amount:
+              </Text>
+              <Text
+                style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              >
+                {item.TotalAmount}
+              </Text>
+            </View>
 
-          <View
-            style={{
-              color: "white",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "90%",
-            }}
-          >
-            {/* <Text style={{ fontWeight: 800, fontSize: ms(13), color: "white" }}>
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
+            >
+              <Text
+                style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}
+              >
+                SoldBy:
+              </Text>
+              <Text
+                style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              >
+                {item.SoldBy}
+              </Text>
+            </View>
+
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
+            >
+              <Text
+                style={{ fontWeight: 800, fontSize: ms(19), color: "white" }}
+              >
+                Branch:
+              </Text>
+              <Text
+                style={{ fontSize: ms(15), color: "#ffd953", fontWeight: 400 }}
+              >
+                {item.BranchName}
+              </Text>
+            </View>
+
+            <View
+              style={{
+                color: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "90%",
+              }}
+            >
+              {/* <Text style={{ fontWeight: 800, fontSize: ms(13), color: "white" }}>
                 Date Updated:
               </Text> */}
-            <Text
-              style={{ fontSize: ms(12), color: "#ffd953", fontWeight: 400 }}
-            >
-              {formatDate(item.createdAt)}
-            </Text>
+              <Text
+                style={{ fontSize: ms(12), color: "#ffd953", fontWeight: 400 }}
+              >
+                {formatDate(item.createdAt)}
+              </Text>
+            </View>
           </View>
-        </View>
-      </Pressable>
-     </ScrollView>
+        </Pressable>
+      </ScrollView>
     );
   };
 
@@ -622,19 +753,65 @@ const Index = ({ navigation }) => {
 
       {/* Product List */}
 
-      <ScrollView style={styles.ProductList}>
-        <FlashList
-          data={products}
-          renderItem={renderItem}
-          estimatedItemSize={200}
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={1}
-          columnWrapperStyle={{
-            justifyContent: "space-between",
-            marginTop: 4,
-          }}
-        />
-      </ScrollView>
+      <View
+        style={{
+          width: "100%",
+          height: "100%",
+          flex: 1,
+          alignItem: "center",
+          justifyContent: "center",
+        }}
+      >
+        { !ItemsBought ?
+
+          <ScrollView style={styles.ProductList}
+          // onScroll={({ nativeEvent }) => {
+          //   if (
+          //     nativeEvent.contentOffset.y + nativeEvent.layoutMeasurement.height >=
+          //     nativeEvent.contentSize.height - 100 // Adjust this value for sensitivity
+          //   ) {
+          //     handleLoadMore(); // Use the debounced version
+          //   }
+          // }}
+          >
+            <FlashList
+              data={ cusDATA }
+              renderItem={renderItem}
+              estimatedItemSize={300}
+              initialNumToRender={10} // Number of items rendered initially
+              maxToRenderPerBatch={5} // Items rendered per batch during scrolling
+              windowSize={10}  
+              keyExtractor={(item) =>
+                 item.id.toString() 
+              }
+              numColumns={1}
+              ListFooterComponent={isLoading && <ActivityIndicator />}
+              columnWrapperStyle={{
+                justifyContent: "space-between",
+                marginTop: 4,
+              }}
+            />
+          </ScrollView>
+
+          :
+          <ScrollView style={styles.ProductList}
+          >
+            <FlashList
+              data={ ItemsBought }
+              renderItem={RenderItemsTable }
+              estimatedItemSize={200}
+              keyExtractor={(item) =>
+                 item.product_Id
+              }
+              numColumns={1}
+              columnWrapperStyle={{
+                justifyContent: "space-between",
+                marginTop: 4,
+              }}
+            />
+          </ScrollView>
+        }
+      </View>
     </Pressable>
   );
 };

@@ -16,6 +16,8 @@ function GlobalState({ children }) {
 
   const [DATA, setData] = useState([])
 
+  const [cusDATA, setCusData] = useState([])
+
   const [refreash, setRefreash] = useState("")
 
   const [EditQty, setEditQty] = useState("")
@@ -72,7 +74,8 @@ function GlobalState({ children }) {
         setProBranchs,
         Branch, 
         setBranch,
-       
+        cusDATA, 
+        setCusData
       }}
     >
       {children}

@@ -149,7 +149,7 @@ const Index = ({ navigation }) => {
     try {
       const response = await axios.get(`${URL}/api/productsPage?page=${Page}&size=5`);
       // Reverse the products array
-      const reversedProducts = response.data.reverse();
+      const reversedProducts = response.data;
       return reversedProducts
       
 
@@ -157,6 +157,26 @@ const Index = ({ navigation }) => {
       console.error("Error fetching products:", error);
     }
   };
+
+  const initalLoad = async ()=>{
+    try {
+      setIsLoading(true);
+
+      let  users= await fetchProducts(currentPage)
+
+      setProducts(users);
+
+      setData(users);
+
+      setFullDate(users);
+
+      console.log("Products:", users);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  }
 
   const deleteProduct = (productId, productName) => {
     new Promise((resolve, reject) => {
@@ -168,7 +188,7 @@ const Index = ({ navigation }) => {
             resolve(
               axios.delete(`${URL}/api/products/${productId}`).then((res) => {
                 console.log(res);
-                fetchProducts();
+                initalLoad();
                 Toast.show({
                   type: "success",
                   // And I can pass any custom props I want
@@ -180,36 +200,10 @@ const Index = ({ navigation }) => {
         },
       ]);
     });
-    // Make the DELETE request
 
-    // Handle successful response
-    // console.log('Product deleted successfully:', response);
   };
 
-  // const indexOfLastItem = currentPage * itemsPerPage;
-  // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  // const currentItems = DATA.slice(0, indexOfLastItem);
-
   useEffect(() => {
-    const initalLoad = async ()=>{
-      try {
-        setIsLoading(true);
-
-        let  users= await fetchProducts(currentPage)
-  
-        setProducts(users);
-  
-        setData(users);
-  
-        setFullDate(users);
-
-        console.log("Products:", users);
-  
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
-    }
     initalLoad()
   }, [refreash]);
 
@@ -955,10 +949,14 @@ const Index = ({ navigation }) => {
 
       {/* Product List */}
 
-      <ScrollView style={styles.ProductList} 
+      <ScrollView
+        style={styles.ProductList}
         onScroll={({ nativeEvent }) => {
-          if (nativeEvent.contentOffset.y + nativeEvent.layoutMeasurement.height >= nativeEvent.contentSize.height) {
-            handleLoadMore();
+          if (
+            nativeEvent.contentOffset.y + nativeEvent.layoutMeasurement.height >=
+            nativeEvent.contentSize.height - 100 // Adjust this value for sensitivity
+          ) {
+            handleLoadMore(); // Use the debounced version
           }
         }}
       >
