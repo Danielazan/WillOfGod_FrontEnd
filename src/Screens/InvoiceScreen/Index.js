@@ -134,7 +134,7 @@ const Index = ({ navigation }) => {
 
   const fetchCustomers = async (Page) => {
     try {
-      const response = await axios.get(`${URL}/api/customerbypage?page=${Page}&size=200`);
+      const response = await axios.get(`${URL}/api/customerbypage?page=${Page}&size=${150}`);
       // Reverse the products array
       const reversedProducts = response.data;
       return reversedProducts
@@ -777,10 +777,7 @@ const Index = ({ navigation }) => {
             <FlashList
               data={ cusDATA }
               renderItem={renderItem}
-              estimatedItemSize={300}
-              initialNumToRender={10} // Number of items rendered initially
-              maxToRenderPerBatch={5} // Items rendered per batch during scrolling
-              windowSize={10}  
+              estimatedItemSize={300} 
               keyExtractor={(item) =>
                  item.id.toString() 
               }
