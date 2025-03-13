@@ -408,14 +408,35 @@ const Index = ({ navigation }) => {
     }
   };
 
-  const handleSearch = (query) => {
+  // const handleSearch = (query) => {
+  //   setSearchQuery(query);
+  //   const formattedQuery = query.toLowerCase();
+
+  //   const filteredData = filter(fullDate, (products) => {
+  //     return contains(products.Name, formattedQuery);
+  //   });
+  //   setData(filteredData);
+  // };
+  const handleSearch = async (query, Page) => {
     setSearchQuery(query);
     const formattedQuery = query.toLowerCase();
-
-    const filteredData = filter(fullDate, (products) => {
-      return contains(products.Name, formattedQuery);
-    });
-    setData(filteredData);
+  
+    try {
+      const response = await axios.get(`${URL}/api/Prosearch/${encodeURIComponent(formattedQuery)}`, {
+        params: {
+          page: Page || 0,
+          size: 5
+        }
+      });
+  
+      const data = response.data;
+  
+      setData(data);
+      console.log("Search Results:", formattedQuery);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      // Handle error, e.g., display an error message
+    }
   };
 
   const contains = (name, query) => {
@@ -928,7 +949,7 @@ const Index = ({ navigation }) => {
           <TextInput
             placeholder="Search for a product"
             value={searchQuery}
-            onChangeText={(query) => handleSearch(query)}
+            onChangeText={(query) => handleSearch(query,0)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             autoCapitalize="none"
