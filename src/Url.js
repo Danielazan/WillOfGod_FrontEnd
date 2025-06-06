@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-let URL= "http://13.53.88.231:8000"
+let URL= "https://will.solutionroadequipment.com"
 
 // let URL
 
