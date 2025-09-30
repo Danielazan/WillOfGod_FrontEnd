@@ -53,13 +53,14 @@ const AddProducts = ({ navigation }) => {
 
   const [productBranchs, setproductBranchs] = useState("");
 
-  const [ActiveBut, setActiveBut] = useState(true)
+  const [ActiveBut, setActiveBut] = useState(true);
 
-  const { refreash, setRefreash, Branch, ProBranchs, setProBranchs } =useContext(GlobalContext);
+  const { refreash, setRefreash, Branch, ProBranchs, setProBranchs } =
+    useContext(GlobalContext);
 
   const handleSubmit = async () => {
     try {
-      setActiveBut(false)
+      setActiveBut(false);
       const formData = new FormData();
       formData.append("image", {
         uri: ProductImg,
@@ -94,7 +95,7 @@ const AddProducts = ({ navigation }) => {
         setProductName("");
         setQuantity("");
 
-        setActiveBut(true)
+        setActiveBut(true);
 
         navigation.navigate("Products");
       } else {
@@ -105,13 +106,129 @@ const AddProducts = ({ navigation }) => {
     }
   };
 
+  // _____
+
+  // const handleSubmit = async () => {
+  //   console.log("Tiggereed")
+  //   try {
+  //     setActiveBut(false);
+     
+
+  //     // Validation: check that all required product fields are provided
+  //     if (!productName || !Quantity || !ProBranchs) {
+  //       throw new Error("All product fields are required");
+  //     }
+
+  //   //   // Post the product data to the API
+
+    
+  //   const response = await axios.post(`${URL}/api/products`, {
+  //     Name: productName,
+  //     Quantity: Quantity,
+  //     BranchName: ProBranchs || "New Haven",
+  //   });
+  //   console.log("Response:", response);
+
+  //     if (response.data.success) {
+  //       // Update refresh state with a random integer (assuming randomIntInRange is a function or value)
+  //       const actualImageName = ProductImg.split('/').pop(7);
+  //       const result = await uploadInChunks(
+  //         ProductImg, 
+  //         `${actualImageName}`, 
+  //         response.data.productId   // attach productId
+  //       );
+  //       const randomIntInRange = getRandomInt(1, 100);
+  //       setRefreash(randomIntInRange);
+
+  //       // Show success toast
+  //       Toast.show({
+  //         type: "success",
+  //         text1: "Product Added successfully",
+  //         visibilityTime: 2000,
+  //       });
+
+  //       // // Clear product fields and reset button state
+  //       setProductImg("");
+  //       setProductName("");
+  //       setQuantity("");
+
+  //       setActiveBut(true);
+
+  //       // Optionally navigate to Products screen
+  //       navigation.navigate("Products");
+
+  //       return {
+  //         success: true,
+  //         productId: response.data.productId,
+  //         message: response.data.message,
+  //       };
+  //     } 
+  //     else {
+  //       return {
+  //         success: false,
+  //         message: response.data.error || "Failed to add product",
+  //       };
+  //     }
+  //   } catch (error) {
+  //     setActiveBut(true); // Re-enable button on error
+  //       console.error("Request failed:", error);
+  //     return {
+  //       success: false,
+  //       message: error.response?.data?.error || error.message || "Server error",
+  //     };
+  //   }
+
+  // };
+
+  const compressToTargetSize = async (uri, targetKB = 72) => {
+    try {
+      let quality = 0.8; // start with 80%
+      let maxWidth = 1000; // start with 1000px width
+      let compressedUri = uri;
+
+      while (quality > 0.1 && maxWidth > 200) {
+        compressedUri = await CompressorImage.compress(uri, {
+          compressionMethod: "manual",
+          quality: quality,
+          maxWidth: maxWidth,
+        });
+
+        // get size in KB
+        const response = await fetch(compressedUri);
+        const blob = await response.blob();
+        const fileSizeKB = blob.size / 1024;
+
+        console.log(
+          `Compressed size: ${fileSizeKB.toFixed(
+            2
+          )}KB at quality ${quality}, maxWidth ${maxWidth}`
+        );
+
+        if (fileSizeKB <= targetKB) {
+          return compressedUri;
+        }
+
+        // If still too large, first reduce quality, then reduce dimensions
+        if (quality > 0.2) {
+          quality -= 0.1;
+        } else {
+          maxWidth -= 200; // shrink dimensions gradually
+        }
+      }
+
+      return compressedUri; // return best result
+    } catch (error) {
+      console.error("Compression error:", error);
+      return uri;
+    }
+  };
+
   const openCameraLib = async () => {
     console.log("PRESSS =====>>>");
 
-    // Launch the image library
     const result = await launchImageLibrary({
       mediaType: "photo",
-      quality: 1, // Set quality to maximum to get the best image for compression
+      quality: 1, // pick best quality, we will compress later
     });
 
     if (result?.assets && result.assets.length > 0) {
@@ -119,22 +236,75 @@ const AddProducts = ({ navigation }) => {
       console.log("RESULT===>>", result);
 
       try {
-        // Compress the selected image
-        const compressedImageUri = await CompressorImage.compress(
+        // compress to ~72KB
+        const compressedImageUri = await compressToTargetSize(
           selectedImageUri,
-          {
-            compressionMethod: "manual", // You can choose 'auto' or 'manual'
-            maxWidth: 1000, // Set your desired max width
-            quality: 0.7, // Set the desired quality (0 to 1)
-          }
+          72
         );
 
-        // Update the state with the compressed image URI
         setProductImg(compressedImageUri);
-        console.log("COMPRESSED IMAGE URI===>>", compressedImageUri);
+        console.log("Final Compressed URI===>>", compressedImageUri);
       } catch (error) {
         console.error("Error compressing image: ", error);
       }
+    }
+  };
+
+  const uploadInChunks = async (fileUri, fileName, productId) => {
+    try {
+      const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+      // Fetch the file from local URI
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+      const fileSize = blob.size;
+      const chunkSize = 20 * 1024; // 20KB
+      const totalChunks = Math.ceil(fileSize / chunkSize);
+  
+      const fileId = Date.now().toString(); // unique ID for this file
+  
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, fileSize);
+        const chunk = blob.slice(start, end);
+  
+        // Convert chunk → base64
+        const base64Chunk = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () =>
+            resolve(reader.result.split(",")[1]); // strip "data:*/*;base64,"
+          reader.onerror = reject;
+          reader.readAsDataURL(chunk);
+        });
+  
+        // Send JSON (not FormData)
+        await axios.post(`${URL}/api/uploadchunk`, {
+          chunk: base64Chunk,
+          fileId,
+          chunkNumber: i + 1,
+          totalChunks,
+          fileName,
+          productId,
+        });
+  
+        console.log(`✅ Uploaded chunk ${i + 1}/${totalChunks}`);
+        if (i < totalChunks - 1) {
+    await delay(5000);
+  }
+      }
+  
+      // Tell server to assemble chunks
+      const { data } = await axios.post(`${URL}/api/assemble`, {
+        fileId,
+        totalChunks,
+        fileName,
+        productId,
+      });
+  
+      console.log("🎉 File upload complete!", data);
+      return data;
+    } catch (error) {
+      console.error("❌ Chunk upload error:", error);
+      throw error;
     }
   };
 
@@ -266,26 +436,29 @@ const AddProducts = ({ navigation }) => {
           </View>
 
           {/* Submit Button */}
-         {
-          ActiveBut && 
-
-          <View>
-          <CustomButton
-            width={wp(45)}
-            text="Submit"
-            color="#ffa800"
-            textcolor="white"
-            borderR={10}
-            items="center"
-            padding="2%"
-            marginT="4%"
-            onPress={() => handleSubmit()}
-            height={hp(7)}
-            fontsize={24}
-            weight={800}
-          />
-        </View>
-         }
+          {ActiveBut ? (
+            <CustomButton
+              width={wp(45)}
+              text="Submit"
+              color="#ffa800"
+              textcolor="white"
+              borderR={10}
+              items="center"
+              padding="2%"
+              marginT="4%"
+              onPress={() => handleSubmit()}
+              height={hp(7)}
+              fontsize={24}
+              weight={800}
+            />
+          ) : (
+            <View style={{ marginTop: hp(4), alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#ffa800" />
+              <Text style={{ color: "#ffa800", marginTop: 8 }}>
+                Resizing Pic...
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </ImageBackground>

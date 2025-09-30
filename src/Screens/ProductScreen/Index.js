@@ -213,9 +213,16 @@ const Index = ({ navigation }) => {
   
     setIsLoading(true);
     
-    const NextPage =currentPage + 1
-  
-     let prodata = await fetchProducts(NextPage)
+    const NextPage =currentPage  + 1
+    
+
+    let prodata;
+    if (searchQuery.trim() === "") {
+      prodata = await fetchProducts(NextPage);
+    } else {
+      prodata = await handleSearchMore(searchQuery,NextPage);
+    }
+    // prodata = await handleSearchMore(searchQuery,NextPage);
   
      setData([...DATA, ...prodata])
   
@@ -418,6 +425,7 @@ const Index = ({ navigation }) => {
   //   setData(filteredData);
   // };
   const handleSearch = async (query, Page) => {
+
     setSearchQuery(query);
     const formattedQuery = query.toLowerCase();
   
@@ -436,6 +444,25 @@ const Index = ({ navigation }) => {
     } catch (error) {
       console.error('Error fetching data:', error);
       // Handle error, e.g., display an error message
+    }
+  };
+
+  const handleSearchMore  = async (query,Page) => {
+    
+    try {
+     
+      const formattedQuery = query.toLowerCase();
+  
+    
+      const response = await axios.get(`${URL}/api/Prosearch/${encodeURIComponent(formattedQuery)}?page=${Page}&size=5`);
+  
+      const data = response.data;
+      console.log("neext call")
+      return data
+      
+
+    } catch (error) {
+      console.error("Error fetching products:", error);
     }
   };
 
